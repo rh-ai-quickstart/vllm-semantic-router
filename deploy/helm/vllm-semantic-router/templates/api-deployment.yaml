@@ -34,6 +34,16 @@ spec:
               value: http://llamastack:8321
           securityContext:
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
           livenessProbe:
             httpGet:
               path: /healthz

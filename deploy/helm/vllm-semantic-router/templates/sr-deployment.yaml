@@ -50,6 +50,9 @@ spec:
             {{- toYaml .Values.semanticRouter.resources | nindent 12 }}
           securityContext:
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
           livenessProbe:
             tcpSocket:
               port: 50051
@@ -73,6 +76,9 @@ spec:
               readOnly: true
           securityContext:
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
           resources:
             requests:
               memory: "256Mi"
