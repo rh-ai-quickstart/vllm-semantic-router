@@ -160,8 +160,8 @@ pgvector:
 minio:
   enabled: true
   secret:
-    user: minioadmin
-    password: minioadmin
+    user: ""
+    password: ""
 
 ingestion-pipeline:
   enabled: false

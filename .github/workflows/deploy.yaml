@@ -6,6 +6,9 @@ on:
         description: "OpenShift namespace"
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     runs-on: ubuntu-latest  # Requires a self-hosted runner with pre-configured oc cluster access
@@ -18,4 +21,6 @@ jobs:
           helm dependency update deploy/helm/vllm-semantic-router
           helm upgrade --install vllm-semantic-router \
             deploy/helm/vllm-semantic-router \
-            -n ${{ github.event.inputs.namespace }}
+            -n "$NAMESPACE"
+        env:
+          NAMESPACE: ${{ github.event.inputs.namespace }}
