@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ChatMessage(BaseModel):
-    role: str
-    content: str
+    role: Literal["user", "assistant", "system"]
+    content: str = Field(..., max_length=32_000)
 
 
 class ChatRequest(BaseModel):
-    messages: list[ChatMessage]
+    messages: list[ChatMessage] = Field(..., max_length=100)
 
 
 class RoutingMetadata(BaseModel):

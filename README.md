@@ -231,7 +231,7 @@ The semantic router classifies every incoming query using configurable **signals
 | Signal | What it detects |
 |--------|----------------|
 | Domain | Topic classification via MMLU categories (computer science, health, other) |
-| Complexity | Simple vs. multi-step reasoning queries |
+| Complexity | Simple vs. multi-step reasoning queries (disabled — see note below) |
 | Jailbreak | Prompt injection and adversarial attacks (built-in) |
 | PII | Personal identifiable information (built-in) |
 | Keyword | Domain-specific terms via BM25 matching (document-terms, rag-keywords) |
@@ -240,7 +240,7 @@ The semantic router classifies every incoming query using configurable **signals
 |----------|----------|-----------|------|
 | blocked | 100 | (none) | Jailbreak detected |
 | pii-flagged | 90 | general-agent | PII detected (with safety prompt) |
-| research | 20 | Qwen3-8B (reasoning) | Computer science domain or high complexity |
+| research | 20 | Qwen3-8B (reasoning) | Computer science domain signal fires |
 | rag | 15 | Granite 3.1-8B | Keyword signals match (document-terms or rag-keywords) |
 | general | 1 | Granite 3.1-2B | Domain classified as "other" (default) |
 
@@ -258,8 +258,8 @@ Routing configuration lives in `config/semantic-router/config.yaml`. To customiz
 | `LLAMA_STACK_URL` | Llamastack endpoint | `http://llamastack:8321` |
 | `DATABASE_URL` | PostgreSQL connection | `postgresql://postgres:postgres@localhost:5432/semantic_router` |
 | `MINIO_ENDPOINT` | MinIO S3 endpoint | `http://localhost:9000` |
-| `MINIO_ACCESS_KEY` | MinIO access key | `minioadmin` |
-| `MINIO_SECRET_KEY` | MinIO secret key | `minioadmin` |
+| `MINIO_ACCESS_KEY` | MinIO access key | (required) |
+| `MINIO_SECRET_KEY` | MinIO secret key | (required) |
 
 ## Development
 

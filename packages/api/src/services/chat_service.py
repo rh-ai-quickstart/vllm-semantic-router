@@ -48,7 +48,7 @@ class ChatService:
 
         except Exception as exc:
             logger.exception("Chat stream error")
-            yield _sse(ErrorEvent(message=str(exc)))
+            yield _sse(ErrorEvent(message="An internal error occurred. Please try again."))
             yield _sse(DoneEvent())
 
     async def _safe_eval(self, text: str) -> RoutingMetadata:

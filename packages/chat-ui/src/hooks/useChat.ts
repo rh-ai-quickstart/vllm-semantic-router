@@ -17,11 +17,16 @@ export function useChat() {
     },
     [],
   );
-  const [isStreaming, setIsStreaming] = useState(false);
+  const [isStreaming, _setIsStreaming] = useState(false);
+  const isStreamingRef = useRef(false);
+  const setIsStreaming = useCallback((value: boolean) => {
+    isStreamingRef.current = value;
+    _setIsStreaming(value);
+  }, []);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim() || isStreaming) return;
+      if (!text.trim() || isStreamingRef.current) return;
 
       const userMsg: ChatMessage = {
         id: String(nextId++),
@@ -92,7 +97,7 @@ export function useChat() {
         setIsStreaming(false);
       }
     },
-    [isStreaming],
+    [],
   );
 
   return {
