@@ -42,6 +42,9 @@ packages/api/dist/
 # Data (generated at runtime)
 data/
 
+# Eval results
+eval/results.json
+
 # Helm
 deploy/helm/*/charts/
 deploy/helm/*/*.tgz

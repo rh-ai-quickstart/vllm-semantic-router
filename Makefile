@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 
 help:
-	@echo "Targets: setup, dev, lint, test, test-integration, test-e2e, deploy, undeploy"
+	@echo "Targets: setup, dev, lint, test, test-integration, test-e2e, eval, deploy, undeploy"
 
 setup:
 	pnpm install
@@ -30,6 +30,9 @@ test-integration:
 
 test-e2e:
 	pnpm exec playwright test
+
+eval:
+	uv run eval/eval.py $(ARGS)
 
 helm-lint:
 	helm lint deploy/helm/vllm-semantic-router/

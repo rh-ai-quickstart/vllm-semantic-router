@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import logging
 from collections.abc import AsyncGenerator
 
@@ -25,18 +24,16 @@ class ChatService:
         last_user_msg = next(
             (m.content for m in reversed(messages) if m.role == "user"), ""
         )
-        eval_task = asyncio.create_task(self._safe_eval(last_user_msg))
+        routing = await self._safe_eval(last_user_msg)
+        yield _sse(RoutingEvent(metadata=routing))
+
+        if routing.selected_decision in BLOCKED_DECISIONS:
+            yield _sse(ErrorEvent(message="Request blocked by jailbreak guardrail."))
+            yield _sse(DoneEvent())
+            return
 
         try:
             async with self._router.stream_chat(messages) as response:
-                routing = await eval_task
-                yield _sse(RoutingEvent(metadata=routing))
-
-                if routing.selected_decision in BLOCKED_DECISIONS:
-                    yield _sse(ErrorEvent(message="Request blocked by jailbreak guardrail."))
-                    yield _sse(DoneEvent())
-                    return
-
                 async for line in response.aiter_lines():
                     if is_done_line(line):
                         break

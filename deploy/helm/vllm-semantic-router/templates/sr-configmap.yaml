@@ -23,6 +23,8 @@ data:
       models:
         - name: research-agent
           reasoning_family: qwen3
+          provider_model_id: Qwen/Qwen3-8B
+          api_format: openai
           backend_refs:
             - name: research-vllm
               endpoint: qwen3-8b-vllm:80
@@ -30,12 +32,17 @@ data:
               weight: 100
               type: chat
         - name: rag-agent
+          provider_model_id: ibm-granite/granite-3.1-8b-instruct
+          api_format: openai
           backend_refs:
-            - name: rag-llamastack
-              endpoint: llamastack:8321
+            - name: rag-vllm
+              endpoint: granite-3-1-8b-instruct-vllm:80
               protocol: http
               weight: 100
+              type: chat
         - name: general-agent
+          provider_model_id: ibm-granite/granite-3.1-2b-instruct
+          api_format: openai
           backend_refs:
             - name: general-vllm
               endpoint: granite-3-1-2b-instruct-vllm:80
@@ -76,8 +83,6 @@ data:
           rules:
             operator: OR
             conditions:
-              - type: complexity
-                name: needs_reasoning
               - type: domain
                 name: "computer science"
           algorithm:
@@ -136,22 +141,7 @@ data:
             keywords: ["openshift", "red hat", "kubernetes", "container", "deployment", "operator"]
             case_sensitive: false
             bm25_threshold: 0.1
-        complexity:
-          - name: needs_reasoning
-            threshold: 0.7
-            description: Escalate multi-step reasoning or synthesis-heavy prompts.
-            hard:
-              candidates:
-                - solve this step by step
-                - compare multiple tradeoffs
-                - analyze the root cause
-                - explain in detail
-            easy:
-              candidates:
-                - answer briefly
-                - quick summary
-                - simple rewrite
-                - hello
+        # complexity signal disabled — requires mmBERT embeddings (ONNX status -1)
       projections:
         partitions:
           - name: request_type
@@ -166,6 +156,18 @@ data:
         - name: rag-agent
         - name: general-agent
     global:
+      model_catalog:
+        modules:
+          prompt_guard:
+            enabled: true
+            use_mmbert_32k: false
+            use_cpu: true
+            threshold: 0.7
+          classifier:
+            pii:
+              use_mmbert_32k: false
+              use_cpu: true
+              threshold: 0.9
       router:
         auto_model_name: auto
       services:

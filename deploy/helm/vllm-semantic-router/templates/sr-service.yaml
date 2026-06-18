@@ -15,6 +15,9 @@ spec:
     - name: api
       port: 8080
       targetPort: 8080
+    - name: listener
+      port: 8899
+      targetPort: 8899
     - name: metrics
       port: 9190
       targetPort: 9190

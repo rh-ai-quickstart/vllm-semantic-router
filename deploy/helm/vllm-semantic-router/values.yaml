@@ -39,6 +39,7 @@ api:
     repository: quay.io/hacohen/vllm-semantic-router-api
     tag: latest
     pullPolicy: Always
+  corsOrigins: ""
 
 # --- Model Serving (3x llm-service via ai-architecture-charts) ---
 

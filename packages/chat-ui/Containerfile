@@ -1,13 +1,16 @@
 FROM registry.access.redhat.com/ubi9/nodejs-22:latest AS builder
+USER 0
 WORKDIR /opt/app-root/src
-COPY packages/chat-ui/package.json ./
-COPY pnpm-lock.yaml ./
-RUN npm install -g pnpm && pnpm install --frozen-lockfile
-COPY packages/chat-ui/ .
-RUN pnpm build
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY packages/chat-ui/package.json packages/chat-ui/package.json
+RUN npm install -g pnpm \
+    && echo "ignore-dep-scripts=true" > .npmrc \
+    && pnpm install --frozen-lockfile --filter chat-ui
+COPY packages/chat-ui/ packages/chat-ui/
+RUN pnpm --filter chat-ui build
 
 FROM registry.access.redhat.com/ubi9/nginx-124:latest
-COPY --from=builder /opt/app-root/src/dist /opt/app-root/src
+COPY --from=builder /opt/app-root/src/packages/chat-ui/dist /opt/app-root/src
 USER 1001
 EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

@@ -44,6 +44,9 @@ spec:
               mountPath: /app/data
           securityContext:
             allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
       volumes:
         - name: config
           configMap:

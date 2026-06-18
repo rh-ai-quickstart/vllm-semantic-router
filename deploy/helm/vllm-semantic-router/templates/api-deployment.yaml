@@ -32,6 +32,10 @@ spec:
               value: http://{{ include "vllm-semantic-router.fullname" . }}-router:8080
             - name: LLAMA_STACK_URL
               value: http://llamastack:8321
+            {{- if .Values.api.corsOrigins }}
+            - name: CORS_ORIGINS
+              value: {{ .Values.api.corsOrigins | quote }}
+            {{- end }}
           securityContext:
             allowPrivilegeEscalation: false
             runAsNonRoot: true
@@ -52,7 +56,7 @@ spec:
             periodSeconds: 30
           readinessProbe:
             httpGet:
-              path: /healthz
+              path: /readyz
               port: 8000
             initialDelaySeconds: 5
             periodSeconds: 10

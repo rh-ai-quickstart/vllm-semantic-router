@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 router = APIRouter(tags=["health"])
 
@@ -12,4 +13,9 @@ async def liveness():
 async def readiness(request: Request):
     client = request.app.state.router_client
     sr_health = await client.health()
-    return {"status": "ok", "services": sr_health}
+    sr_status = sr_health.get("semantic_router", {}).get("status", "error")
+    is_healthy = sr_status in ("ok", "healthy")
+    body = {"status": sr_status, "services": sr_health}
+    if not is_healthy:
+        return JSONResponse(content=body, status_code=503)
+    return body
