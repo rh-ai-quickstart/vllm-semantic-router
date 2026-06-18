@@ -1,10 +1,9 @@
-import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
 
-from src.schemas.chat import ChatMessage, RoutingMetadata
+from src.schemas.chat import RoutingMetadata
 from src.services.router_client import RouterClient, is_done_line, parse_sse_content
 
 

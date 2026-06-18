@@ -133,12 +133,13 @@ describe("streamChat", () => {
       { role: "user", content: "how are you" },
     ];
 
-    for await (const _ of streamChat(messages)) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    for await (const _event of streamChat(messages)) {
       // consume
     }
 
     const fetchCall = vi.mocked(fetch).mock.calls[0];
-    const body = JSON.parse(fetchCall[1]!.body as string);
+    const body = JSON.parse(fetchCall[1]?.body as string);
     expect(body.messages).toEqual(messages);
   });
 });

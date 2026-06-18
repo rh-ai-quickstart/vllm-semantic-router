@@ -43,7 +43,7 @@ class ChatService:
 
                 yield _sse(DoneEvent())
 
-        except Exception as exc:
+        except Exception:
             logger.exception("Chat stream error")
             yield _sse(ErrorEvent(message="An internal error occurred. Please try again."))
             yield _sse(DoneEvent())
