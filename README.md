@@ -258,6 +258,7 @@ Routing configuration lives in `config/semantic-router/config.yaml`. To customiz
 | `LLAMA_STACK_URL` | Llamastack endpoint | `http://llamastack:8321` |
 | `DATABASE_URL` | PostgreSQL connection | `postgresql://postgres:postgres@localhost:5432/semantic_router` |
 | `MINIO_ENDPOINT` | MinIO S3 endpoint | `http://localhost:9000` |
+| `CORS_ORIGINS` | Comma-separated allowed CORS origins | `http://localhost:5173,http://localhost:3000` |
 | `MINIO_ACCESS_KEY` | MinIO access key | (required) |
 | `MINIO_SECRET_KEY` | MinIO secret key | (required) |
 
