@@ -2,13 +2,21 @@ import type { StreamEvent } from "../types/chat";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
+const VALID_EVENT_TYPES = new Set(["routing", "delta", "error", "done"]);
+
+function isStreamEvent(data: unknown): data is StreamEvent {
+  return typeof data === "object" && data !== null && "type" in data && VALID_EVENT_TYPES.has((data as StreamEvent).type);
+}
+
 export async function* streamChat(
   messages: Array<{ role: string; content: string }>,
+  signal?: AbortSignal,
 ): AsyncGenerator<StreamEvent> {
   const response = await fetch(`${API_BASE}/api/v1/chat`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ messages }),
+    signal,
   });
 
   if (!response.ok) {
@@ -40,7 +48,8 @@ export async function* streamChat(
       if (!trimmed.startsWith("data: ")) continue;
       const payload = trimmed.slice(6);
       try {
-        yield JSON.parse(payload) as StreamEvent;
+        const parsed: unknown = JSON.parse(payload);
+        if (isStreamEvent(parsed)) yield parsed;
       } catch {
         // skip malformed lines
       }
@@ -49,7 +58,8 @@ export async function* streamChat(
 
   if (buffer.trim().startsWith("data: ")) {
     try {
-      yield JSON.parse(buffer.trim().slice(6)) as StreamEvent;
+      const parsed: unknown = JSON.parse(buffer.trim().slice(6));
+      if (isStreamEvent(parsed)) yield parsed;
     } catch {
       // skip
     }

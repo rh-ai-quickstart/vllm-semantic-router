@@ -1,8 +1,6 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { streamChat } from "../services/api";
 import type { ChatMessage } from "../types/chat";
-
-let nextId = 0;
 
 export function useChat() {
   const [messages, _setMessages] = useState<ChatMessage[]>([]);
@@ -24,17 +22,25 @@ export function useChat() {
     _setIsStreaming(value);
   }, []);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => { abortRef.current?.abort(); };
+  }, []);
+
   const sendMessage = useCallback(
     async (text: string) => {
       if (!text.trim() || isStreamingRef.current) return;
+      abortRef.current?.abort();
+      abortRef.current = new AbortController();
 
       const userMsg: ChatMessage = {
-        id: String(nextId++),
+        id: crypto.randomUUID(),
         role: "user",
         content: text.trim(),
       };
 
-      const assistantId = String(nextId++);
+      const assistantId = crypto.randomUUID();
       const assistantMsg: ChatMessage = {
         id: assistantId,
         role: "assistant",
@@ -52,7 +58,7 @@ export function useChat() {
       }));
 
       try {
-        for await (const event of streamChat(history)) {
+        for await (const event of streamChat(history, abortRef.current.signal)) {
           switch (event.type) {
             case "routing":
               setMessages((prev) =>

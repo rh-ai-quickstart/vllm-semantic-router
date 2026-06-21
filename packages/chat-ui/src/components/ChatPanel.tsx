@@ -68,6 +68,7 @@ export function ChatPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Type a message..."
+          maxLength={32000}
           disabled={isStreaming}
           className="chat-input"
         />
