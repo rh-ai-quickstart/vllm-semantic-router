@@ -9,7 +9,6 @@ from src.services.router_client import RouterClient, is_done_line, parse_sse_con
 logger = logging.getLogger(__name__)
 
 BLOCKED_DECISIONS = {"blocked"}
-WARNING_DECISIONS = {"pii-flagged"}
 
 
 def _sse(event: RoutingEvent | DeltaEvent | ErrorEvent | DoneEvent) -> str:

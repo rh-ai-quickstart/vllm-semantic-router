@@ -255,7 +255,6 @@ Routing configuration lives in `config/semantic-router/config.yaml`. To customiz
 | `HF_TOKEN` | Hugging Face token for model downloads | (required) |
 | `SR_ENVOY_URL` | Semantic Router Envoy proxy | `http://envoy:8801` |
 | `SR_API_URL` | Semantic Router classify API | `http://semantic-router:8080` |
-| `LLAMA_STACK_URL` | Llamastack endpoint | `http://llamastack:8321` |
 | `DATABASE_URL` | PostgreSQL connection | `postgresql://postgres:postgres@localhost:5432/semantic_router` |
 | `MINIO_ENDPOINT` | MinIO S3 endpoint | `http://localhost:9000` |
 | `CORS_ORIGINS` | Comma-separated allowed CORS origins | `http://localhost:5173,http://localhost:3000` |
@@ -288,7 +287,7 @@ packages/
   api/                      FastAPI backend (chat proxy + routing metadata)
   chat-ui/                  React chat interface with routing visualization
   db/                       PostgreSQL + pgvector models (Alembic)
-  ingestion/                Document ingestion pipeline (Docling + Llamastack)
+  ingestion/                Document ingestion pipeline (Llamastack)
 tests/
   integration/              Integration tests
   e2e/                      Playwright E2E tests

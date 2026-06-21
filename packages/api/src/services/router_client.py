@@ -13,7 +13,10 @@ class RouterClient:
     def __init__(self, envoy_url: str, api_url: str) -> None:
         self._envoy_url = envoy_url.rstrip("/")
         self._api_url = api_url.rstrip("/")
-        self._client = httpx.AsyncClient(timeout=httpx.Timeout(300.0))
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(300.0),
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=10),
+        )
 
     async def eval(self, text: str) -> RoutingMetadata:
         response = await self._client.post(

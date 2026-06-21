@@ -28,9 +28,12 @@ def upload_to_minio() -> list[str]:
 
     try:
         s3.head_bucket(Bucket=MINIO_BUCKET)
-    except s3.exceptions.ClientError:
-        s3.create_bucket(Bucket=MINIO_BUCKET)
-        print(f"Created bucket: {MINIO_BUCKET}")
+    except s3.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "404":
+            s3.create_bucket(Bucket=MINIO_BUCKET)
+            print(f"Created bucket: {MINIO_BUCKET}")
+        else:
+            raise
 
     uploaded = []
     for doc_path in sorted(SAMPLE_DOCS_DIR.glob("*.md")):

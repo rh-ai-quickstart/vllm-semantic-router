@@ -5,7 +5,7 @@ help:
 
 setup:
 	pnpm install
-	pip install -e "packages/api[test]" -e "packages/db"
+	pip install -e "packages/api[test]" -e "packages/db" -e "packages/ingestion[test]"
 	pre-commit install
 
 dev:
@@ -21,6 +21,7 @@ lint:
 
 test:
 	pytest packages/api/tests/unit/ -v
+	pytest packages/ingestion/tests/ -v
 	pnpm --filter chat-ui test
 
 test-integration:
