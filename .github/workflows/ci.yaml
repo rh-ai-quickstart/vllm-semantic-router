@@ -58,4 +58,5 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
+      - run: helm dependency update deploy/helm/vllm-semantic-router/
       - run: helm lint deploy/helm/vllm-semantic-router/

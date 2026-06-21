@@ -21,6 +21,11 @@ jobs:
           helm dependency update deploy/helm/vllm-semantic-router
           helm upgrade --install vllm-semantic-router \
             deploy/helm/vllm-semantic-router \
-            -n "$NAMESPACE"
+            -n "$NAMESPACE" \
+            --set semanticRouter.hfToken="$HF_TOKEN" \
+            --set llm-service-research.secret.hf_token="$HF_TOKEN" \
+            --set llm-service-rag.secret.hf_token="$HF_TOKEN" \
+            --set llm-service-general.secret.hf_token="$HF_TOKEN"
         env:
           NAMESPACE: ${{ github.event.inputs.namespace }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}

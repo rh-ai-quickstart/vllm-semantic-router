@@ -1,3 +1,6 @@
+# Local dev: all traffic goes to the SR listener on port 8899, which handles
+# signal evaluation AND backend routing internally. The Helm config uses
+# per-model header-based Envoy clusters instead (sr-envoy-configmap.yaml).
 admin:
   address:
     socket_address:
