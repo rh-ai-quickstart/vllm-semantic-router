@@ -23,7 +23,6 @@ data:
       models:
         - name: research-agent
           reasoning_family: qwen3
-          provider_model_id: Qwen/Qwen3-8B
           api_format: openai
           backend_refs:
             - name: research-vllm
@@ -32,7 +31,6 @@ data:
               weight: 100
               type: chat
         - name: rag-agent
-          provider_model_id: ibm-granite/granite-3.1-8b-instruct
           api_format: openai
           backend_refs:
             - name: rag-vllm
@@ -41,7 +39,6 @@ data:
               weight: 100
               type: chat
         - name: general-agent
-          provider_model_id: ibm-granite/granite-3.1-2b-instruct
           api_format: openai
           backend_refs:
             - name: general-vllm
