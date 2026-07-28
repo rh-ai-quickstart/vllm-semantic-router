@@ -1,0 +1,15 @@
+{{- if .Values.benchmark.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "vllm-semantic-router.fullname" . }}-benchmark-results
+  labels:
+    app.kubernetes.io/name: benchmark
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: {{ .Values.benchmark.results.storageClassName }}
+  resources:
+    requests:
+      storage: {{ .Values.benchmark.results.pvcSize }}
+{{- end }}

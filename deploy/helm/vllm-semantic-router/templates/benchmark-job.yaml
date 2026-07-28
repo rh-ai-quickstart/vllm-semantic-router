@@ -1,0 +1,155 @@
+{{- if .Values.benchmark.enabled }}
+{{- $generalData  := printf "kind=synthetic_text,prompt_tokens=%d,output_tokens=%d" (int .Values.benchmark.models.general.promptTokens) (int .Values.benchmark.models.general.outputTokens) }}
+{{- $ragData      := printf "kind=synthetic_text,prompt_tokens=%d,output_tokens=%d" (int .Values.benchmark.models.rag.promptTokens) (int .Values.benchmark.models.rag.outputTokens) }}
+{{- $researchData := printf "kind=synthetic_text,prompt_tokens=%d,output_tokens=%d" (int .Values.benchmark.models.research.promptTokens) (int .Values.benchmark.models.research.outputTokens) }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "vllm-semantic-router.fullname" . }}-benchmark
+  labels:
+    app.kubernetes.io/name: benchmark
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  ttlSecondsAfterFinished: 3600
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: benchmark
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    spec:
+      restartPolicy: Never
+      # All three containers run in parallel. Job completes when all exit 0.
+      containers:
+        # general-agent: Granite 3.1-2B on CPU (Intel Xeon m6i.4xlarge, Ice Lake)
+        # Uses synchronous profile with few requests — CPU inference latency is high.
+        - name: benchmark-general
+          image: {{ .Values.benchmark.image }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install "guidellm[recommended]" --quiet --no-cache-dir
+              guidellm run \
+                --backend "kind=openai_http,target=http://granite-2b-vllm:80/v1,model=general-agent" \
+                --tokenizer "kind=huggingface_auto,model={{ .Values.benchmark.tokenizers.general }}" \
+                --profile "{{ .Values.benchmark.models.general.profile }}" \
+                --constraint "{{ .Values.benchmark.models.general.constraint }}" \
+                --data "{{ $generalData }}" \
+                --output "kind=json,path=/results/general-agent-benchmark.json" \
+                --output "kind=csv,path=/results/general-agent-benchmark.csv" \
+                --output "kind=html,path=/results/general-agent-report.html" \
+                --label "model=general-agent" \
+                --label "backend=cpu-m6i-ice-lake" \
+                --label "node=m6i.4xlarge"
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vllm-semantic-router.fullname" . }}-hf-token
+                  key: token
+          volumeMounts:
+            - name: results
+              mountPath: /results
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
+
+        # rag-agent: Granite 3.1-8B on GPU (sweep)
+        - name: benchmark-rag
+          image: {{ .Values.benchmark.image }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install "guidellm[recommended]" --quiet --no-cache-dir
+              guidellm run \
+                --backend "kind=openai_http,target=http://granite-8b-vllm:80/v1,model=rag-agent" \
+                --tokenizer "kind=huggingface_auto,model={{ .Values.benchmark.tokenizers.rag }}" \
+                --profile "{{ .Values.benchmark.models.rag.profile }}" \
+                --constraint "{{ .Values.benchmark.models.rag.constraint }}" \
+                --data "{{ $ragData }}" \
+                --output "kind=json,path=/results/rag-agent-benchmark.json" \
+                --output "kind=csv,path=/results/rag-agent-benchmark.csv" \
+                --output "kind=html,path=/results/rag-agent-report.html" \
+                --label "model=rag-agent" \
+                --label "backend=gpu-g5" \
+                --label "node=g5.2xlarge"
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vllm-semantic-router.fullname" . }}-hf-token
+                  key: token
+          volumeMounts:
+            - name: results
+              mountPath: /results
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
+
+        # research-agent: Qwen3-8B on GPU (sweep)
+        - name: benchmark-research
+          image: {{ .Values.benchmark.image }}
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              pip install "guidellm[recommended]" --quiet --no-cache-dir
+              guidellm run \
+                --backend "kind=openai_http,target=http://qwen3-8b-vllm:80/v1,model=research-agent" \
+                --tokenizer "kind=huggingface_auto,model={{ .Values.benchmark.tokenizers.research }}" \
+                --profile "{{ .Values.benchmark.models.research.profile }}" \
+                --constraint "{{ .Values.benchmark.models.research.constraint }}" \
+                --data "{{ $researchData }}" \
+                --output "kind=json,path=/results/research-agent-benchmark.json" \
+                --output "kind=csv,path=/results/research-agent-benchmark.csv" \
+                --output "kind=html,path=/results/research-agent-report.html" \
+                --label "model=research-agent" \
+                --label "backend=gpu-g5" \
+                --label "node=g5.2xlarge"
+          env:
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "vllm-semantic-router.fullname" . }}-hf-token
+                  key: token
+          volumeMounts:
+            - name: results
+              mountPath: /results
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            capabilities:
+              drop: [ALL]
+
+      volumes:
+        - name: results
+          persistentVolumeClaim:
+            claimName: {{ include "vllm-semantic-router.fullname" . }}-benchmark-results
+{{- end }}

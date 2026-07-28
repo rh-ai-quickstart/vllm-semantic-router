@@ -1,0 +1,48 @@
+# CPU profile — Granite 3.1-2B on Intel Xeon (m6i.4xlarge, AVX-512, no AMX)
+# Applies on top of values.yaml. Arrays (tolerations, args) replace; maps are deep-merged.
+#
+# Usage:
+#   helm upgrade --install vllm-semantic-router deploy/helm/vllm-semantic-router \
+#     -f deploy/helm/vllm-semantic-router/values-general-cpu.yaml
+#
+# Or via Makefile:
+#   make deploy-cpu
+
+llm-service-general:
+  deviceConfigs:
+    cpu:
+      image: registry.redhat.io/rhaii/vllm-cpu-rhel9:3.4.0
+      env:
+        - name: LD_PRELOAD
+          value: "/usr/lib64/libomp.so"
+        - name: VLLM_CPU_KVCACHE_SPACE
+          value: "8"
+  models:
+    granite-2b:
+      device: cpu
+      tolerations:
+        - key: cpu-taint
+          effect: NoSchedule
+          operator: Exists
+      nodeSelector:
+        node-role.kubernetes.io/cpu-model: ""
+      resources:
+        limits:
+          cpu: "14"
+          memory: 24Gi
+        requests:
+          cpu: "8"
+          memory: 16Gi
+      args:
+        - --dtype
+        - bfloat16
+        - --block-size
+        - "128"
+        - --max-num-batched-tokens
+        - "2048"
+        - --max-num-seqs
+        - "32"
+        - --max-model-len
+        - "4096"
+        - --served-model-name
+        - "general-agent"

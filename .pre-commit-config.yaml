@@ -5,3 +5,67 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.37.1
+    hooks:
+      - id: yamllint
+        args: ["-d", "{extends: relaxed, rules: {line-length: {max: 250}, key-duplicates: enable}}"]
+        exclude: ^deploy/helm/.*/templates/
+  - repo: https://github.com/google/yamlfmt
+    rev: v0.9.0
+    hooks:
+      - id: yamlfmt
+        exclude: ^(deploy/helm/.*/templates/|pnpm-lock\.yaml|eval/dataset\.yaml)
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: detect-aws-credentials
+        args: ["--allow-missing-credentials"]
+      - id: detect-private-key
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: v3.9.0-1
+    hooks:
+      - id: shfmt
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks
+  - repo: local
+    hooks:
+      - id: pytest-api
+        name: pytest (api)
+        entry: uv run --project packages/api --extra test pytest packages/api/tests/unit/ -v
+        language: system
+        pass_filenames: false
+        files: ^packages/(api|db)/
+      - id: pytest-ingestion
+        name: pytest (ingestion)
+        entry: uv run --project packages/ingestion --extra test pytest packages/ingestion/tests/ -v
+        language: system
+        pass_filenames: false
+        files: ^packages/ingestion/
+      - id: vitest-chat-ui
+        name: vitest (chat-ui)
+        entry: pnpm --filter chat-ui test
+        language: system
+        pass_filenames: false
+        files: ^packages/chat-ui/
+      - id: helm-lint
+        name: Helm Lint
+        entry: bash -c "helm dependency update deploy/helm/vllm-semantic-router && helm lint --set chatUI.image.repository=lint/placeholder --set api.image.repository=lint/placeholder deploy/helm/vllm-semantic-router" # gitleaks:allow
+        language: system
+        pass_filenames: false
+        files: ^deploy/helm/
+      - id: eslint-chat-ui
+        name: ESLint
+        entry: pnpm --filter chat-ui lint
+        language: system
+        pass_filenames: false
+        files: ^packages/chat-ui/.*\.(ts|tsx|js)$
+      - id: tsc-chat-ui
+        name: TypeScript check
+        entry: pnpm --filter chat-ui type-check
+        language: system
+        pass_filenames: false
+        files: ^packages/chat-ui/.*\.(ts|tsx)$

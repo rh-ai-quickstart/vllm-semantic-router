@@ -81,46 +81,12 @@ graph TB
 - Red Hat OpenShift AI 2.9+
 - `oc` CLI authenticated to the cluster
 - `helm` 3.x
-- **GPU:** 3 NVIDIA GPUs (T4, L4, or A10G) for model serving. All models are <=8B parameters — each requires a dedicated GPU.
+- **GPU:** 2–3 NVIDIA GPUs (T4, L4, or A10G) for model serving.
   - 1 GPU for Qwen3-8B (research)
   - 1 GPU for Granite 3.1-8B (RAG)
-  - 1 GPU for Granite 3.1-2B (general)
+  - 1 GPU for Granite 3.1-2B (general) — **or** use `make deploy-cpu` to run the general model on CPU, reducing GPU requirement to 2
 - Hugging Face token with access to Qwen3-8B
 - If GPU nodes have custom taints (e.g. `g5-gpu`), tolerations must be added per model in `values.yaml`
-
-### Local Development
-
-- Python 3.12+
-- Node.js 22+ with pnpm
-- Podman + podman-compose
-- NVIDIA GPU with CUDA (for vLLM model serving)
-
-## Quick Start (Local)
-
-```bash
-git clone https://github.com/rh-ai-quickstart/vllm-semantic-router.git
-cd vllm-semantic-router
-cp .env.example .env
-# Edit .env -- set HF_TOKEN for model downloads
-make setup
-make dev
-```
-
-| Service | URL |
-|---------|-----|
-| Chat UI | http://localhost:3000 |
-| SR Dashboard | http://localhost:8700 |
-| API docs | http://localhost:8000/docs |
-| SR Classify API | http://localhost:8080/docs |
-| MinIO Console | http://localhost:9001 |
-
-### Ingest Sample Documents (for RAG)
-
-```bash
-python3 packages/ingestion/src/ingest.py
-```
-
-This uploads the bundled sample docs (OpenShift AI overview, SR guide) to MinIO and registers them in Llamastack's vector store.
 
 ## Deploy to OpenShift
 
@@ -137,19 +103,10 @@ export HF_TOKEN=<your-huggingface-token>
 The chat UI and API backend images must be built and pushed to a container registry accessible from the cluster:
 
 ```bash
-podman build --platform linux/amd64 \
-  -t quay.io/<your-org>/vllm-semantic-router-chat-ui:latest \
-  -f packages/chat-ui/Containerfile .
-
-podman build --platform linux/amd64 \
-  -t quay.io/<your-org>/vllm-semantic-router-api:latest \
-  -f packages/api/Containerfile packages/api
-
-podman push quay.io/<your-org>/vllm-semantic-router-chat-ui:latest
-podman push quay.io/<your-org>/vllm-semantic-router-api:latest
+make build-push REGISTRY=quay.io ORG=<your-org>
 ```
 
-Then update `deploy/helm/vllm-semantic-router/values.yaml` to point `chatUI.image.repository` and `api.image.repository` to your pushed images.
+This builds both images for `linux/amd64` and pushes them to `quay.io/<your-org>/`. The same `REGISTRY` and `ORG` values are passed automatically to the Helm deploy targets.
 
 ### 3. GPU node tolerations
 
@@ -159,7 +116,7 @@ If GPU nodes have custom taints (common on shared clusters), add tolerations und
 # Example for a cluster with g5-gpu taint
 llm-service-general:
   models:
-    granite-3-1-2b-instruct:
+    granite-2b:
       tolerations:
         - key: nvidia.com/gpu
           effect: NoSchedule
@@ -172,8 +129,20 @@ llm-service-general:
 ### 4. Install with Helm
 
 ```bash
-helm install vllm-semantic-router deploy/helm/vllm-semantic-router \
-  -n vllm-semantic-router \
+# GPU deployment (default — 3 GPU nodes required)
+make deploy HELM_NS=<namespace> REGISTRY=quay.io ORG=<your-org>
+
+# CPU deployment for general model (Granite 3.1-2B on CPU, research/RAG still require GPU)
+make deploy-cpu HELM_NS=<namespace> REGISTRY=quay.io ORG=<your-org>
+```
+
+Or directly with Helm:
+
+```bash
+helm upgrade --install vllm-semantic-router deploy/helm/vllm-semantic-router \
+  -n <namespace> \
+  --set chatUI.image.repository=quay.io/<your-org>/vllm-semantic-router-chat-ui \
+  --set api.image.repository=quay.io/<your-org>/vllm-semantic-router-api \
   --set llm-service-research.secret.hf_token=$HF_TOKEN \
   --set llm-service-rag.secret.hf_token=$HF_TOKEN \
   --set llm-service-general.secret.hf_token=$HF_TOKEN \
@@ -195,6 +164,10 @@ oc get route -n vllm-semantic-router -l app.kubernetes.io/name=chat-ui \
 
 # Get the SR dashboard URL
 oc get route -n vllm-semantic-router -l app.kubernetes.io/name=sr-dashboard \
+  -o jsonpath='{.items[0].spec.host}'
+
+# Get the SR Envoy URL (for eval)
+oc get route -n vllm-semantic-router -l app.kubernetes.io/name=envoy \
   -o jsonpath='{.items[0].spec.host}'
 ```
 
@@ -244,7 +217,7 @@ The semantic router classifies every incoming query using configurable **signals
 | rag | 15 | Granite 3.1-8B | Keyword signals match (document-terms or rag-keywords) |
 | general | 1 | Granite 3.1-2B | Domain classified as "other" (default) |
 
-The config also includes v0.3 features: a `projections` layer that partitions domains into an exclusive `request_type` group, and a `session_aware` algorithm on the research decision that prevents model switches during active tool loops. Jailbreak and PII signals run as built-in defaults.
+Jailbreak and PII signals run as built-in defaults.
 
 Routing configuration lives in `config/semantic-router/config.yaml`. To customize routing for your own app, edit the `decisions`, `signals`, and `projections` sections -- no code changes needed.
 
@@ -255,25 +228,24 @@ Routing configuration lives in `config/semantic-router/config.yaml`. To customiz
 | `HF_TOKEN` | Hugging Face token for model downloads | (required) |
 | `SR_ENVOY_URL` | Semantic Router Envoy proxy | `http://envoy:8801` |
 | `SR_API_URL` | Semantic Router classify API | `http://semantic-router:8080` |
-| `DATABASE_URL` | PostgreSQL connection | `postgresql://postgres:postgres@localhost:5432/semantic_router` |
-| `MINIO_ENDPOINT` | MinIO S3 endpoint | `http://localhost:9000` |
-| `CORS_ORIGINS` | Comma-separated allowed CORS origins | `http://localhost:5173,http://localhost:3000` |
+| `DATABASE_URL` | PostgreSQL connection | `postgresql://<user>:<pass>@<postgres-service>:5432/<db>` |
+| `MINIO_ENDPOINT` | MinIO S3 endpoint | `http://<minio-service>:9000` |
+| `CORS_ORIGINS` | Comma-separated allowed CORS origins | (your OCP chat UI route) |
 | `MINIO_ACCESS_KEY` | MinIO access key | (required) |
 | `MINIO_SECRET_KEY` | MinIO secret key | (required) |
 
 ## Development
 
 ```bash
-make setup             # Install Python + Node dependencies, pre-commit hooks
-make dev               # Start all services (podman-compose up --build)
-make dev-down          # Stop all services
-make lint              # Run ruff (Python) + eslint (TypeScript)
+make build-push        # Build and push chat-ui + API images (set REGISTRY and ORG)
 make test              # Run unit tests (pytest + vitest)
-make test-integration  # Run integration tests against real DB
-make helm-lint         # Validate Helm chart
-make deploy            # helm dep update + helm upgrade --install
+make eval              # Evaluate routing accuracy against a live SR (set ARGS="--url ...")
+make deploy            # helm dep update + helm upgrade --install (set HELM_NS)
+make deploy-cpu        # Deploy with CPU overlay for the general model
 make undeploy          # helm uninstall
 ```
+
+Linting, type-checking, Helm validation, and unit tests all run via pre-commit hooks (`pre-commit run --all-files` to run manually). CI runs the same hooks.
 
 ## Project Structure
 
@@ -281,16 +253,13 @@ make undeploy          # helm uninstall
 config/semantic-router/     Routing configuration (config.yaml, signals, decisions)
 deploy/
   helm/vllm-semantic-router/  Umbrella Helm chart (ai-architecture-charts deps)
-  local/                      Local dev configs (Envoy)
 docs/sample-docs/           Sample RAG documents
+eval/                       Routing accuracy evaluation tool + dataset
 packages/
   api/                      FastAPI backend (chat proxy + routing metadata)
   chat-ui/                  React chat interface with routing visualization
   db/                       PostgreSQL + pgvector models (Alembic)
   ingestion/                Document ingestion pipeline (Llamastack)
-tests/
-  integration/              Integration tests
-  e2e/                      Playwright E2E tests
 ```
 
 ## License

@@ -34,7 +34,7 @@ data:
           api_format: openai
           backend_refs:
             - name: rag-vllm
-              endpoint: granite-3-1-8b-instruct-vllm:80
+              endpoint: granite-8b-vllm:80
               protocol: http
               weight: 100
               type: chat
@@ -42,7 +42,7 @@ data:
           api_format: openai
           backend_refs:
             - name: general-vllm
-              endpoint: granite-3-1-2b-instruct-vllm:80
+              endpoint: granite-2b-vllm:80
               protocol: http
               weight: 100
               type: chat
@@ -82,11 +82,6 @@ data:
             conditions:
               - type: domain
                 name: "computer science"
-          algorithm:
-            type: session_aware
-            session_aware:
-              base_method: hybrid
-              tool_loop_hard_lock: true
           modelRefs:
             - model: research-agent
               use_reasoning: true
@@ -167,7 +162,20 @@ data:
               threshold: 0.9
       router:
         auto_model_name: auto
+        learning:
+          enabled: true
+          protection:
+            enabled: true
+            scope: conversation
+            identity:
+              headers:
+                session: x-session-id
+                conversation: x-conversation-id
       services:
+        management_api:
+          bind_address: 0.0.0.0
+          auth:
+            mode: disabled
         observability:
           metrics:
             enabled: true

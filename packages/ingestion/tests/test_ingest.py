@@ -2,8 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
-
-from src.ingest import upload_to_minio, register_vector_store, main
+from src.ingest import main, register_vector_store, upload_to_minio
 
 
 @pytest.fixture
@@ -94,11 +93,15 @@ class TestRegisterVectorStore:
 class TestMain:
     def test_exits_if_docs_dir_missing(self, tmp_path):
         missing = tmp_path / "nonexistent"
-        with patch("src.ingest.SAMPLE_DOCS_DIR", missing):
-            with pytest.raises(SystemExit, match="1"):
-                main()
+        with (
+            patch("src.ingest.SAMPLE_DOCS_DIR", missing),
+            pytest.raises(SystemExit, match="1"),
+        ):
+            main()
 
     def test_exits_if_no_documents(self, mock_s3, tmp_path):
-        with patch("src.ingest.SAMPLE_DOCS_DIR", tmp_path):
-            with pytest.raises(SystemExit, match="1"):
-                main()
+        with (
+            patch("src.ingest.SAMPLE_DOCS_DIR", tmp_path),
+            pytest.raises(SystemExit, match="1"),
+        ):
+            main()

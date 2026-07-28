@@ -2,10 +2,8 @@ name: Integration Tests
 on:
   push:
     branches: [main]
-
 permissions:
   contents: read
-
 jobs:
   integration:
     runs-on: ubuntu-latest

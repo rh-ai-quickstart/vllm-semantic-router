@@ -1,11 +1,9 @@
 version: v0.3
-
 listeners:
   - name: http-8899
     address: 0.0.0.0
     port: 8899
     timeout: 300s
-
 providers:
   defaults:
     default_model: general-agent
@@ -24,7 +22,6 @@ providers:
           protocol: http
           weight: 100
           type: chat
-
     - name: rag-agent
       provider_model_id: ibm-granite/granite-3.1-8b-instruct
       api_format: openai
@@ -34,7 +31,6 @@ providers:
           protocol: http
           weight: 100
           type: chat
-
     - name: general-agent
       provider_model_id: ibm-granite/granite-3.1-2b-instruct
       api_format: openai
@@ -44,7 +40,6 @@ providers:
           protocol: http
           weight: 100
           type: chat
-
 routing:
   decisions:
     - name: blocked
@@ -56,7 +51,6 @@ routing:
           - type: jailbreak
             name: detected
       modelRefs: []
-
     - name: pii-flagged
       description: Flag requests containing PII
       priority: 90
@@ -74,7 +68,6 @@ routing:
             enabled: true
             system_prompt: "The user's message may contain sensitive personal information. Do not repeat, store, or reference any PII. Respond helpfully while ignoring specific personal details."
             mode: prepend
-
     - name: research
       description: Route complex research and reasoning queries
       priority: 20
@@ -83,15 +76,9 @@ routing:
         conditions:
           - type: domain
             name: "computer science"
-      algorithm:
-        type: session_aware
-        session_aware:
-          base_method: hybrid
-          tool_loop_hard_lock: true
       modelRefs:
         - model: research-agent
           use_reasoning: true
-
     - name: rag
       description: Route knowledge-base and document queries
       priority: 15
@@ -105,7 +92,6 @@ routing:
       modelRefs:
         - model: rag-agent
           use_reasoning: false
-
     - name: general
       description: Default route for general conversation
       priority: 1
@@ -117,7 +103,6 @@ routing:
       modelRefs:
         - model: general-agent
           use_reasoning: false
-
   signals:
     domains:
       - name: "computer science"
@@ -142,9 +127,8 @@ routing:
         keywords: ["openshift", "red hat", "kubernetes", "container", "deployment", "operator"]
         case_sensitive: false
         bm25_threshold: 0.1
-    # complexity signal disabled — requires mmBERT embeddings which fail on
-    # this cluster (ONNX status -1). Re-enable once upstream fixes land.
-
+        # complexity signal disabled — requires mmBERT embeddings which fail on
+        # this cluster (ONNX status -1). Re-enable once upstream fixes land.
   projections:
     partitions:
       - name: request_type
@@ -154,12 +138,10 @@ routing:
           - health
           - other
         default: other
-
   modelCards:
     - name: research-agent
     - name: rag-agent
     - name: general-agent
-
 global:
   model_catalog:
     modules:
@@ -175,6 +157,15 @@ global:
           threshold: 0.9
   router:
     auto_model_name: auto
+    learning:
+      enabled: true
+      protection:
+        enabled: true
+        scope: conversation
+        identity:
+          headers:
+            session: x-session-id
+            conversation: x-conversation-id
   services:
     observability:
       tracing:
@@ -184,6 +175,10 @@ global:
       metrics:
         enabled: true
         port: 9190
+    management_api:
+      remote_exposure: true
+      auth:
+        mode: disabled
   stores:
     semantic_cache:
       enabled: true

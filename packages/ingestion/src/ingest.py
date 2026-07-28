@@ -50,7 +50,9 @@ def register_vector_store(doc_keys: list[str]) -> None:
 
     existing = [vs.name for vs in client.vector_stores.list().data]
     if VECTOR_STORE_NAME in existing:
-        print(f"Vector store '{VECTOR_STORE_NAME}' already exists, skipping registration.")
+        print(
+            f"Vector store '{VECTOR_STORE_NAME}' already exists, skipping registration."
+        )
         return
 
     client.vector_stores.register(
@@ -64,7 +66,9 @@ def register_vector_store(doc_keys: list[str]) -> None:
     for key in doc_keys:
         doc_path = SAMPLE_DOCS_DIR / key
         content = doc_path.read_text()
-        documents.append({"document_id": key, "content": content, "metadata": {"source": key}})
+        documents.append(
+            {"document_id": key, "content": content, "metadata": {"source": key}}
+        )
 
     client.tool_runtime.rag_tool.insert(
         documents=documents,

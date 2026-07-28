@@ -47,7 +47,7 @@ class TestIsDoneLine:
         assert is_done_line("  data: [DONE]  ") is True
 
     def test_not_done(self):
-        assert is_done_line("data: {\"choices\":[]}") is False
+        assert is_done_line('data: {"choices":[]}') is False
 
     def test_empty(self):
         assert is_done_line("") is False

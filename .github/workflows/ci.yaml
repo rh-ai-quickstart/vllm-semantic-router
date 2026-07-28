@@ -2,61 +2,25 @@ name: CI
 on:
   pull_request:
     branches: [main]
-
 permissions:
   contents: read
-
 jobs:
-  lint-python:
+  pre-commit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install ruff
-      - run: ruff check packages/api/ packages/db/ packages/ingestion/
-      - run: ruff format --check packages/api/ packages/db/ packages/ingestion/
-
-  lint-typescript:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter chat-ui lint
-      - run: pnpm --filter chat-ui type-check
-
-  unit-tests-api:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install -e "packages/api[test]" -e "packages/db"
-      - run: pytest packages/api/tests/unit/ -v
-
-  unit-tests-ui:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter chat-ui test
-
-  helm-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
       - uses: azure/setup-helm@v4
       - run: helm dependency update deploy/helm/vllm-semantic-router/
-      - run: helm lint deploy/helm/vllm-semantic-router/
+      - uses: astral-sh/setup-uv@v5
+      - uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --all-files

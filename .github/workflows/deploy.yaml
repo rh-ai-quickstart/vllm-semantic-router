@@ -5,10 +5,8 @@ on:
       namespace:
         description: "OpenShift namespace"
         required: true
-
 permissions:
   contents: read
-
 jobs:
   deploy:
     runs-on: self-hosted

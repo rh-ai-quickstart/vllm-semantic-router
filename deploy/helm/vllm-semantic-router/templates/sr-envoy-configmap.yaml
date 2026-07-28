@@ -83,7 +83,7 @@ data:
                   - endpoint:
                       address:
                         socket_address:
-                          address: granite-3-1-2b-instruct-vllm
+                          address: granite-2b-vllm
                           port_value: 80
         - name: research_backend
           connect_timeout: 30s
@@ -109,7 +109,7 @@ data:
                   - endpoint:
                       address:
                         socket_address:
-                          address: granite-3-1-8b-instruct-vllm
+                          address: granite-8b-vllm
                           port_value: 80
         - name: ext_proc_cluster
           connect_timeout: 30s

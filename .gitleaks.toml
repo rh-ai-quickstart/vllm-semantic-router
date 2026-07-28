@@ -1,0 +1,5 @@
+title = "vllm-semantic-router gitleaks config"
+
+[allowlist]
+  description = "Helm lint placeholder values in pre-commit config are not secrets"
+  paths = ['''^\.pre-commit-config\.yaml$''']

@@ -3,6 +3,10 @@
 # --- Semantic Router (custom components, not from ai-architecture-charts) ---
 semanticRouter:
   hfToken: ""
+  # Exposes the Envoy proxy (port 8801) as an OCP Route for direct eval access.
+  # WARNING: This is an unauthenticated public endpoint — disable in production.
+  envoyRoute:
+    enabled: true
   image:
     repository: ghcr.io/vllm-project/semantic-router/extproc
     tag: latest
@@ -19,28 +23,25 @@ semanticRouter:
   modelsPersistence:
     enabled: true
     size: 20Gi
-
 srDashboard:
   enabled: true
   image:
     repository: ghcr.io/vllm-project/semantic-router/dashboard
     tag: latest
     pullPolicy: IfNotPresent
-
 # --- Chat UI + API (custom application) ---
+# Required: set image repos before deploying — run: make build-push REGISTRY=... ORG=...
 chatUI:
   image:
-    repository: quay.io/hacohen/vllm-semantic-router-chat-ui
+    repository: ""
     tag: latest
     pullPolicy: Always
-
 api:
   image:
-    repository: quay.io/hacohen/vllm-semantic-router-api
+    repository: ""
     tag: latest
     pullPolicy: Always
   corsOrigins: ""
-
 # --- Model Serving (3x llm-service via ai-architecture-charts) ---
 
 # Research agent: Qwen3-8B with reasoning
@@ -74,7 +75,6 @@ llm-service-research:
         - "16"
         - --served-model-name
         - "research-agent"
-
 # RAG backing model: Granite 3.1-8B
 llm-service-rag:
   enabled: true
@@ -82,7 +82,7 @@ llm-service-rag:
     hf_token: ""
     enabled: true
   models:
-    granite-3-1-8b-instruct:
+    granite-8b:
       id: ibm-granite/granite-3.1-8b-instruct
       enabled: true
       tolerations:
@@ -106,15 +106,15 @@ llm-service-rag:
         - "16"
         - --served-model-name
         - "rag-agent"
-
-# General conversation: Granite 3.1-2B
+# General conversation: Granite 3.1-2B — GPU default
+# For CPU deployment, apply: -f values-general-cpu.yaml
 llm-service-general:
   enabled: true
   secret:
     hf_token: ""
     enabled: true
   models:
-    granite-3-1-2b-instruct:
+    granite-2b:
       id: ibm-granite/granite-3.1-2b-instruct
       enabled: true
       tolerations:
@@ -138,9 +138,7 @@ llm-service-general:
         - "32"
         - --served-model-name
         - "general-agent"
-
 # --- RAG Infrastructure ---
-
 llama-stack:
   enabled: true
   image:
@@ -149,20 +147,57 @@ llama-stack:
   pgvector:
     enabled: true
   models:
-    granite-3-1-8b-instruct:
+    granite-8b:
       id: rag-agent
       enabled: true
-
 pgvector:
   enabled: true
   secret:
     dbname: semantic_router
-
 minio:
   enabled: true
   secret:
     user: ""
     password: ""
-
 ingestion-pipeline:
   enabled: false
+# --- GuideLLM Benchmarking ---
+# Deploy a one-shot Job that benchmarks all three model endpoints.
+# Usage:
+#   make benchmark          (deploys Job and waits for completion)
+#   make benchmark-results  (copies results to ./benchmark-results/)
+#
+# Or manually:
+#   helm upgrade --install ... --set benchmark.enabled=true
+#   helm upgrade --install ... --set benchmark.enabled=false  # cleanup
+benchmark:
+  enabled: false
+  image: registry.access.redhat.com/ubi9/python-311:latest
+  guidellmVersion: "0.7.*"
+  # HuggingFace model IDs for tokenizer resolution (not model download).
+  tokenizers:
+    general: ibm-granite/granite-3.1-2b-instruct
+    rag: ibm-granite/granite-3.1-8b-instruct
+    research: Qwen/Qwen3-8B
+  # Per-model benchmark profiles.
+  # general (CPU): synchronous + small requests — CPU inference is ~10-60s/req.
+  # rag/research (GPU): concurrent sweep — GPU can handle parallel load.
+  models:
+    general:
+      profile: "kind=synchronous"
+      constraint: "kind=max_requests,count=5"
+      promptTokens: 128
+      outputTokens: 32
+    rag:
+      profile: "kind=sweep"
+      constraint: "kind=max_duration,seconds=60"
+      promptTokens: 512
+      outputTokens: 128
+    research:
+      profile: "kind=sweep"
+      constraint: "kind=max_duration,seconds=60"
+      promptTokens: 512
+      outputTokens: 128
+  results:
+    pvcSize: 5Gi
+    storageClassName: gp3-csi

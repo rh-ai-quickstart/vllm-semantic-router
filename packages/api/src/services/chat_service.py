@@ -20,9 +20,7 @@ class ChatService:
         self._router = router_client
 
     async def stream_response(self, messages: list[ChatMessage]) -> AsyncGenerator[str, None]:
-        last_user_msg = next(
-            (m.content for m in reversed(messages) if m.role == "user"), ""
-        )
+        last_user_msg = next((m.content for m in reversed(messages) if m.role == "user"), "")
         routing = await self._safe_eval(last_user_msg)
         yield _sse(RoutingEvent(metadata=routing))
 

@@ -32,6 +32,8 @@ spec:
                   key: token
             - name: HF_HOME
               value: /tmp/hf-cache
+            - name: VLLM_SR_MANAGEMENT_INTERNAL_LISTENER
+              value: "true"
           ports:
             - containerPort: 50051
               name: grpc

@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: chat-ui
-          image: {{ .Values.chatUI.image.repository }}:{{ .Values.chatUI.image.tag }}
+          image: {{ required "chatUI.image.repository is required — run: make build-push REGISTRY=... ORG=..." .Values.chatUI.image.repository }}:{{ .Values.chatUI.image.tag }}
           imagePullPolicy: {{ .Values.chatUI.image.pullPolicy }}
           ports:
             - containerPort: 8080
