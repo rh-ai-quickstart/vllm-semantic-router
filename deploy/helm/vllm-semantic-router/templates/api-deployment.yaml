@@ -18,9 +18,13 @@ spec:
         app.kubernetes.io/name: api
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: api
-          image: {{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}
+          image: {{ include "vllm-semantic-router.image" .Values.api.image }}
           imagePullPolicy: {{ .Values.api.image.pullPolicy }}
           ports:
             - containerPort: 8000

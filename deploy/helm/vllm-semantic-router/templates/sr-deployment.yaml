@@ -15,16 +15,25 @@ spec:
       app.kubernetes.io/component: router
   template:
     metadata:
+      annotations:
+        checksum/router-config: {{ include (print $.Template.BasePath "/sr-configmap.yaml") . | sha256sum }}
+        checksum/envoy-config: {{ include (print $.Template.BasePath "/sr-envoy-configmap.yaml") . | sha256sum }}
       labels:
         app.kubernetes.io/name: semantic-router
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/component: router
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: extproc
-          image: {{ .Values.semanticRouter.image.repository }}:{{ .Values.semanticRouter.image.tag }}
+          image: {{ include "vllm-semantic-router.image" .Values.semanticRouter.image }}
           imagePullPolicy: {{ .Values.semanticRouter.image.pullPolicy }}
           env:
+            - name: VLLM_SR_MANAGEMENT_INTERNAL_LISTENER
+              value: "true"
             - name: HF_TOKEN
               valueFrom:
                 secretKeyRef:

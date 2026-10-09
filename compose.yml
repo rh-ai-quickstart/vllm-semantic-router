@@ -2,8 +2,10 @@ services:
   # --- Semantic Router ---
   semantic-router:
     image: ghcr.io/vllm-project/semantic-router/extproc:latest
+    environment:
+      VLLM_SR_MANAGEMENT_INTERNAL_LISTENER: "true"
     ports:
-      - "8080:8080"   # Classify API
+      - "127.0.0.1:8080:8080"   # Classify API
       - "8899:8899"   # SR listener (routing + backend)
       - "9190:9190"   # Metrics
     volumes:

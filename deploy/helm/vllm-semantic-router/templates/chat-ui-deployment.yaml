@@ -18,9 +18,13 @@ spec:
         app.kubernetes.io/name: chat-ui
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: chat-ui
-          image: {{ .Values.chatUI.image.repository }}:{{ .Values.chatUI.image.tag }}
+          image: {{ include "vllm-semantic-router.image" .Values.chatUI.image }}
           imagePullPolicy: {{ .Values.chatUI.image.pullPolicy }}
           ports:
             - containerPort: 8080

@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cpu-operator
+  namespace: cpu-operator-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cpu-operator
+  template:
+    metadata:
+      labels:
+        app: cpu-operator
+    spec:
+      serviceAccountName: cpu-operator
+      containers:
+        - name: operator
+          image: quay.io/louie_tsai/cpu-operator:v1
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace

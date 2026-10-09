@@ -15,13 +15,19 @@ spec:
       app.kubernetes.io/instance: {{ .Release.Name }}
   template:
     metadata:
+      annotations:
+        checksum/router-config: {{ include (print $.Template.BasePath "/sr-configmap.yaml") . | sha256sum }}
       labels:
         app.kubernetes.io/name: sr-dashboard
         app.kubernetes.io/instance: {{ .Release.Name }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: dashboard
-          image: {{ .Values.srDashboard.image.repository }}:{{ .Values.srDashboard.image.tag }}
+          image: {{ include "vllm-semantic-router.image" .Values.srDashboard.image }}
           imagePullPolicy: {{ .Values.srDashboard.image.pullPolicy }}
           command: ["/bin/sh"]
           args: ["/app/start-dashboard.sh", "/app/config/config.yaml"]

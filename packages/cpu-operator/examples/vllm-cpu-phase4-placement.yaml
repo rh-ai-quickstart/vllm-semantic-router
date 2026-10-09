@@ -1,0 +1,127 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-cpu-inference
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-cpu
+  namespace: ai-cpu-inference
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vllm-cpu
+  template:
+    metadata:
+      labels:
+        app: vllm-cpu
+        name: vllm-cpu
+    spec:
+      enableServiceLinks: false
+      nodeSelector:
+        cpu.example.com/node-class: mixed-cpu-amx-gpu
+        cpu.example.com/phase4-applied: "true"
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vllm-cpu
+          image: public.ecr.aws/q9t5s3a7/vllm-cpu-release-repo:v0.19.0
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-lc"]
+          args:
+            - >
+              exec vllm serve "${MODEL:-meta-llama/Llama-3.1-8B-Instruct}"
+              --host 0.0.0.0
+              --port 8001
+              --dtype bfloat16
+              --distributed-executor-backend mp
+              --tensor-parallel-size 4
+              --block-size 128
+              --trust-remote-code
+              --disable-log-stats
+              --max-model-len 4096
+              --max-num-batched-tokens 1024
+              --max-num-seqs 32
+          env:
+            - name: MODEL
+              value: "meta-llama/Llama-3.1-8B-Instruct"
+            - name: ON_CPU
+              value: "1"
+            - name: VLLM_CPU_KVCACHE_SPACE
+              value: "40"
+            - name: HOME
+              value: /tmp
+            - name: XDG_CACHE_HOME
+              value: /tmp/.cache
+            - name: HF_HOME
+              value: /tmp/hf_cache
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: HF_TOKEN
+                  optional: false
+          ports:
+            - name: http
+              containerPort: 8001
+          resources:
+            requests:
+              cpu: "288"
+              memory: "256Gi"
+            limits:
+              cpu: "288"
+              memory: "256Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+            - name: hf-cache
+              mountPath: /tmp/hf_cache
+            - name: vllm-cache
+              mountPath: /tmp/.cache
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Gi
+        - name: hf-cache
+          emptyDir: {}
+        - name: vllm-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-cpu
+  namespace: ai-cpu-inference
+spec:
+  selector:
+    app: vllm-cpu
+  ports:
+    - name: http
+      port: 8001
+      targetPort: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: vllm-cpu
+  namespace: ai-cpu-inference
+spec:
+  to:
+    kind: Service
+    name: vllm-cpu
+  port:
+    targetPort: http

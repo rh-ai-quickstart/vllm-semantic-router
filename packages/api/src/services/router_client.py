@@ -20,7 +20,7 @@ class RouterClient:
 
     async def eval(self, text: str) -> RoutingMetadata:
         response = await self._client.post(
-            f"{self._api_url}/api/v1/eval",
+            f"{self._api_url}/api/v1/routing/preview",
             json={"text": text, "options": {"return_probabilities": True}},
         )
         response.raise_for_status()

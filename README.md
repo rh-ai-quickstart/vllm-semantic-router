@@ -2,7 +2,7 @@
 
 Add intelligent, config-driven routing to any multi-agent AI application on Red Hat OpenShift AI.
 
-This quickstart deploys [vLLM Semantic Router](https://github.com/vllm-project/semantic-router) as an OpenAI-compatible proxy in front of three on-cluster agents (research/reasoning, RAG, general conversation). A chat UI makes routing decisions visible -- showing which agent was selected, which signals fired, and why. The primary takeaway: you can add semantic routing, jailbreak guardrails, and cost optimization to any agentic app through YAML configuration alone, with no application code changes.
+This quickstart deploys [vLLM Semantic Router](https://github.com/vllm-project/semantic-router) as an OpenAI-compatible proxy in front of three on-cluster agents (research/reasoning, RAG, general conversation). A chat UI displays a separate routing preview with the recommended agent and matched signals. The preview is not a record of which model served the answer. The primary takeaway: you can add semantic routing, jailbreak guardrails, and cost optimization to any agentic app through YAML configuration alone, with no application code changes.
 
 ## Use case
 
@@ -124,6 +124,11 @@ This uploads the bundled sample docs (OpenShift AI overview, SR guide) to MinIO 
 
 ## Deploy to OpenShift
 
+For the mixed two-GPU/one-CPU profile, first follow
+[OpenShift AI and KServe installation](docs/OPENSHIFT_AI_KSERVE.md), then
+[G7 CPU Operator integration](docs/G7_CPU_OPERATOR.md).
+
+
 ### 1. Create namespace and set HF token
 
 ```bash
@@ -138,18 +143,18 @@ The chat UI and API backend images must be built and pushed to a container regis
 
 ```bash
 podman build --platform linux/amd64 \
-  -t quay.io/<your-org>/vllm-semantic-router-chat-ui:latest \
+  -t quay.io/<your-org>/vllm-semantic-router-chat-ui:router-compat-fix-v1 \
   -f packages/chat-ui/Containerfile .
 
 podman build --platform linux/amd64 \
-  -t quay.io/<your-org>/vllm-semantic-router-api:latest \
+  -t quay.io/<your-org>/vllm-semantic-router-api:router-compat-fix-v1 \
   -f packages/api/Containerfile packages/api
 
-podman push quay.io/<your-org>/vllm-semantic-router-chat-ui:latest
-podman push quay.io/<your-org>/vllm-semantic-router-api:latest
+podman push quay.io/<your-org>/vllm-semantic-router-chat-ui:router-compat-fix-v1
+podman push quay.io/<your-org>/vllm-semantic-router-api:router-compat-fix-v1
 ```
 
-Then update `deploy/helm/vllm-semantic-router/values.yaml` to point `chatUI.image.repository` and `api.image.repository` to your pushed images.
+Build these images from your patched checkout. Save their repositories and version tags in an override file. For immutable references, set `image.digest` on the API, Chat UI, router and dashboard; it takes precedence over `tag`. See [deployment repair and upgrades](docs/DEPLOYMENT_REPAIR.md) for registry credentials and safe upgrades.
 
 ### 3. GPU node tolerations
 
@@ -172,8 +177,9 @@ llm-service-general:
 ### 4. Install with Helm
 
 ```bash
-helm install vllm-semantic-router deploy/helm/vllm-semantic-router \
+CPU_OPERATOR_NODE="" helm install vllm-semantic-router deploy/helm/vllm-semantic-router \
   -n vllm-semantic-router \
+  --post-renderer ./scripts/cpu-operator-kserve-post-renderer.py \
   --set llm-service-research.secret.hf_token=$HF_TOKEN \
   --set llm-service-rag.secret.hf_token=$HF_TOKEN \
   --set llm-service-general.secret.hf_token=$HF_TOKEN \
@@ -181,6 +187,8 @@ helm install vllm-semantic-router deploy/helm/vllm-semantic-router \
 ```
 
 > The `semanticRouter.hfToken` is required for the router to download embedding models (mmBERT) used for signal classification. A 20Gi PVC is created by default to persist these models across pod restarts. The ingestion pipeline is disabled by default; enable it with `--set ingestion-pipeline.enabled=true` when DSPA is available.
+
+For upgrades, preserve the previous shared resources as described in [deployment repair and upgrades](docs/DEPLOYMENT_REPAIR.md). The G7 deployment script already does this. The default three-GPU layout requires at least three allocatable GPUs.
 
 ### 5. Verify
 
@@ -205,7 +213,9 @@ oc get route -n vllm-semantic-router -l app.kubernetes.io/name=sr-dashboard \
 | Predictor pods stuck in `Pending` | GPU nodes have taints the pods don't tolerate | Add tolerations to each model in `values.yaml` |
 | Chat-ui/API pods in `ImagePullBackOff` | Images not pushed or registry not accessible | Build and push images (step 2) |
 | Router (extproc) in `CrashLoopBackOff` | Missing HF_TOKEN or unwritable model dir | Set `semanticRouter.hfToken` in helm values |
-| Router crashes with jailbreak detector error | Explicit jailbreak/pii signal declarations make mmBERT model download mandatory | Remove explicit jailbreak/pii signal declarations from config; built-in defaults work without them |
+| Router rejects undeclared jailbreak/PII signals | Decisions reference signals absent from the recipe | Keep explicit signal declarations and use a compatible router image; inspect startup/download logs |
+| Chat works but routing preview is blank | API image still calls removed /api/v1/eval endpoint | Rebuild the API from this checkout; it calls /api/v1/routing/preview |
+| API readiness 503 while router is running | Management API is unreachable across pods | Use the chart internal listener configuration and check router/API logs |
 | Chat returns 504 Gateway Timeout | Envoy ext_proc `message_timeout` too low for routing latency | Set `message_timeout: 30s` in Envoy ext_proc filter config |
 | Llamastack in `ImagePullBackOff` | `llamastack/distribution-starter` renamed to `ogxai/distribution-starter` | Update image to `docker.io/ogxai/distribution-starter:0.6.1` |
 | Llamastack crashes with "API 'safety' does not exist" | Using `ogxai/distribution-starter:latest` (1.x) with 0.x config schema | Use `ogxai/distribution-starter:0.6.1` to match the subchart config format |
@@ -232,8 +242,8 @@ The semantic router classifies every incoming query using configurable **signals
 |--------|----------------|
 | Domain | Topic classification via MMLU categories (computer science, health, other) |
 | Complexity | Simple vs. multi-step reasoning queries (disabled — see note below) |
-| Jailbreak | Prompt injection and adversarial attacks (built-in) |
-| PII | Personal identifiable information (built-in) |
+| Jailbreak | Prompt injection and adversarial attacks (explicit signal) |
+| PII | Personal identifiable information (explicit signal) |
 | Keyword | Domain-specific terms via BM25 matching (document-terms, rag-keywords) |
 
 | Decision | Priority | Routes to | When |
@@ -244,7 +254,7 @@ The semantic router classifies every incoming query using configurable **signals
 | rag | 15 | Granite 3.1-8B | Keyword signals match (document-terms or rag-keywords) |
 | general | 1 | Granite 3.1-2B | Domain classified as "other" (default) |
 
-The config also includes v0.3 features: a `projections` layer that partitions domains into an exclusive `request_type` group, and a `session_aware` algorithm on the research decision that prevents model switches during active tool loops. Jailbreak and PII signals run as built-in defaults.
+The config uses a `projections` layer that partitions domains into an exclusive `request_type` group. Conversation protection is enabled under `global.router.learning.protection`, with adaptation disabled. Jailbreak and PII signals are explicitly declared. The management API is available internally on port 8080; do not expose it through a public Route without configuring authentication.
 
 Routing configuration lives in `config/semantic-router/config.yaml`. To customize routing for your own app, edit the `decisions`, `signals`, and `projections` sections -- no code changes needed.
 

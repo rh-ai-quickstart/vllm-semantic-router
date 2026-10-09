@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ai-inference
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-gpu
+  namespace: ai-inference
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vllm-gpu
+  template:
+    metadata:
+      labels:
+        app: vllm-gpu
+        name: vllm-gpu
+    spec:
+      enableServiceLinks: false
+      nodeSelector:
+        cpu.example.com/node-class: mixed-cpu-amx-gpu
+        cpu.example.com/phase4-applied: "true"
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: vllm-gpu
+          image: vllm/vllm-openai:latest
+          imagePullPolicy: IfNotPresent
+          command: ["bash", "-lc"]
+          args:
+            - >
+              exec vllm serve "${MODEL:-Qwen/Qwen2.5-32B-Instruct-AWQ}"
+              --host 0.0.0.0
+              --port 8000
+              ${EXTRA_ARGS:---trust-remote-code}
+          env:
+            - name: MODEL
+              value: "Qwen/Qwen2.5-32B-Instruct-AWQ"
+            - name: EXTRA_ARGS
+              value: "--trust-remote-code --quantization awq --dtype half --gpu-memory-utilization 0.90 --max-model-len 4096 --max-num-seqs 64 "
+            - name: HOME
+              value: /tmp
+            - name: XDG_CACHE_HOME
+              value: /tmp/.cache
+            - name: HF_HOME
+              value: /tmp/hf_cache
+            - name: HF_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hf-token
+                  key: HF_TOKEN
+                  optional: false
+          ports:
+            - name: http
+              containerPort: 8000
+          resources:
+            requests:
+              cpu: "8"
+              memory: "128Gi"
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "8"
+              memory: "128Gi"
+              nvidia.com/gpu: "1"
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            runAsNonRoot: true
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: shm
+              mountPath: /dev/shm
+            - name: hf-cache
+              mountPath: /tmp/hf_cache
+            - name: vllm-cache
+              mountPath: /tmp/.cache
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 128Gi
+        - name: hf-cache
+          emptyDir: {}
+        - name: vllm-cache
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm-gpu
+  namespace: ai-inference
+spec:
+  selector:
+    app: vllm-gpu
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: vllm-gpu
+  namespace: ai-inference
+spec:
+  to:
+    kind: Service
+    name: vllm-gpu
+  port:
+    targetPort: http

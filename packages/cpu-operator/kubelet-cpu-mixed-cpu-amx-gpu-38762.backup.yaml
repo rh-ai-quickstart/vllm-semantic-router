@@ -1,0 +1,33 @@
+apiVersion: machineconfiguration.openshift.io/v1
+kind: KubeletConfig
+metadata:
+  annotations:
+    machineconfiguration.openshift.io/mc-name-suffix: ""
+  creationTimestamp: "2026-05-07T09:22:23Z"
+  finalizers:
+  - 99-cpu-mixed-cpu-amx-gpu-38762-generated-kubelet
+  generation: 1
+  labels:
+    cpu.example.com/node-class: mixed-cpu-amx-gpu
+    cpu.example.com/topology-group: mixed-cpu-amx-gpu-38762
+  name: kubelet-cpu-mixed-cpu-amx-gpu-38762
+  resourceVersion: "406673"
+  uid: 95dc2562-ec15-4d70-8430-69032ca447f5
+spec:
+  kubeletConfig:
+    cpuManagerPolicy: static
+    cpuManagerPolicyOptions:
+      distribute-cpus-across-numa: "true"
+      full-pcpus-only: "true"
+    topologyManagerPolicy: restricted
+    topologyManagerScope: pod
+  machineConfigPoolSelector:
+    matchLabels:
+      pools.operator.machineconfiguration.openshift.io/cpu-mixed-cpu-amx-gpu-38762: ""
+status:
+  conditions:
+  - lastTransitionTime: "2026-05-07T09:22:23Z"
+    message: Success
+    status: "True"
+    type: Success
+  observedGeneration: 1

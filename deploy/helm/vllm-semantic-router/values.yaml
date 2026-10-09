@@ -1,10 +1,15 @@
 # vLLM Semantic Router Quickstart - Helm Values
 
+# Pull secrets for router, API, Chat UI and dashboard (same namespace).
+# Dependency charts have their own image-pull settings.
+imagePullSecrets: []
+
 # --- Semantic Router (custom components, not from ai-architecture-charts) ---
 semanticRouter:
   hfToken: ""
   image:
     repository: ghcr.io/vllm-project/semantic-router/extproc
+    digest: "" # Optional sha256:... takes precedence over tag
     tag: latest
     pullPolicy: IfNotPresent
   envoy:
@@ -24,6 +29,7 @@ srDashboard:
   enabled: true
   image:
     repository: ghcr.io/vllm-project/semantic-router/dashboard
+    digest: "" # Optional sha256:... takes precedence over tag
     tag: latest
     pullPolicy: IfNotPresent
 
@@ -31,12 +37,14 @@ srDashboard:
 chatUI:
   image:
     repository: quay.io/hacohen/vllm-semantic-router-chat-ui
+    digest: "" # Optional sha256:... takes precedence over tag
     tag: latest
     pullPolicy: Always
 
 api:
   image:
     repository: quay.io/hacohen/vllm-semantic-router-api
+    digest: "" # Optional sha256:... takes precedence over tag
     tag: latest
     pullPolicy: Always
   corsOrigins: ""

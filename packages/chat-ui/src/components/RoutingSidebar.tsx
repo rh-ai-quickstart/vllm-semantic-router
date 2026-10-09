@@ -8,7 +8,7 @@ export function RoutingSidebar({ metadata }: Props) {
   if (!metadata) {
     return (
       <aside className="sidebar">
-        <h2>Routing Details</h2>
+        <h2>Routing Preview</h2>
         <p className="sidebar-empty">Select a message to see routing details.</p>
       </aside>
     );
@@ -16,7 +16,9 @@ export function RoutingSidebar({ metadata }: Props) {
 
   return (
     <aside className="sidebar">
-      <h2>Routing Details</h2>
+      <h2>Routing Preview</h2>
+
+      <p className="sidebar-empty">Preview selection; the model serving the answer may differ.</p>
 
       <div className="sidebar-section">
         <h3>Decision</h3>

@@ -54,6 +54,22 @@ class TestIsDoneLine:
 
 
 class TestRoutingMetadataFromEvalResponse:
+    def test_preview_selected_model_takes_precedence(self):
+        meta = RoutingMetadata.from_eval_response({
+            "selected_model": "research-agent",
+            "recommended_models": ["general-agent", "research-agent"],
+            "decision_result": {
+                "decision_name": "research",
+                "matched_signals": {"domains": ["computer science"]},
+            },
+            "signal_confidences": {"domain:computer science": 0.9999978542327881},
+        })
+        assert meta.selected_model == "research-agent"
+        assert meta.selected_decision == "research"
+        # A signal probability is not a decision-level confidence.
+        assert meta.selected_confidence is None
+        assert meta.signal_confidences["domain:computer science"] > 0.99
+
     def test_full_response(self):
         data = {
             "recommended_models": ["research-agent"],
@@ -126,7 +142,7 @@ class TestRouterClientEval:
         result = await client.eval("hello")
 
         client._client.post.assert_called_once_with(
-            "http://router:8080/api/v1/eval",
+            "http://router:8080/api/v1/routing/preview",
             json={"text": "hello", "options": {"return_probabilities": True}},
         )
         assert result.selected_decision == "general"

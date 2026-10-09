@@ -1,0 +1,86 @@
+apiVersion: cpu.example.com/v1alpha1
+kind: CPUPlacementPolicy
+metadata:
+  name: auto-vllm-cpu-policy
+  namespace: cpu-operator-system
+spec:
+  mode: Auto
+
+  # Provider model:
+  #   OpenShift: generates MachineConfigPool, KubeletConfig, and optional Tuned CR.
+  #   GenericKubernetes/Kubeadm: renders KubeletConfiguration and apply plan only.
+  provider:
+    type: OpenShift        # OpenShift | GenericKubernetes | Kubeadm | ClusterAPI
+    applyMode: Managed  # Managed | RecommendationOnly | ExternalApply | NodeAgent
+
+  targetNodeSelector:
+    node-role.kubernetes.io/worker: ""
+
+  nodeLabels:
+    enabled: true
+    prefix: cpu.example.com
+
+  openshift:
+    machineConfigPoolNamePrefix: cpu
+    manageKubeletConfig: true
+    manageTuned: false
+    tunedProfile: openshift-node-llm-compute
+    topologyManagerScope: pod
+
+  generic:
+    outputConfigMap: auto-vllm-cpu-policy-generated-kubelet-config
+
+  # Backward-compatible OpenShift provider settings.
+  # apply is enabled by default through provider.applyMode=Managed.
+  phase4:
+    enabled: true
+    apply: true
+    machineConfigPoolNamePrefix: cpu
+    topologyManagerScope: pod
+    pauseMachineConfigPool: false
+
+  classification:
+    overrideLabel: cpu.example.com/node-class-override
+    amxNodeSelector:
+      node-role.kubernetes.io/inference: ""
+    gpuOnlyNodeSelector:
+      cpu.example.com/gpu-only: "true"
+    cpuAmxMinLogicalCPUs: 64
+
+  profiles:
+    mixed-cpu-amx-gpu:
+      cpuManagerPolicy: static
+      cpuManagerPolicyOptions:
+        distribute-cpus-across-numa: "true"
+        full-pcpus-only: "true"
+      topologyManagerPolicy: restricted
+      placement:
+        strategy: balanced-shared-cpu-and-gpu
+        gpuPodReservedCPUs: 12
+        gpuPodDistribution: balanced-across-numa
+        cpuPodPool: all-remaining-balanced-across-numa
+
+    cpu-amx:
+      cpuManagerPolicy: static
+      cpuManagerPolicyOptions:
+        distribute-cpus-across-numa: "true"
+        full-pcpus-only: "true"
+      topologyManagerPolicy: restricted
+      placement:
+        strategy: balanced-reserved-other-pods
+        reservedOtherPodsPerNuma: 2
+        cpuPodPool: all-remaining-balanced-across-numa
+
+    gpu-only:
+      cpuManagerPolicy: static
+      cpuManagerPolicyOptions: {}
+      topologyManagerPolicy: single-numa-node
+      placement:
+        strategy: same-numa-node-first
+
+    cpu-only:
+      cpuManagerPolicy: static
+      cpuManagerPolicyOptions: {}
+      topologyManagerPolicy: single-numa-node
+      placement:
+        strategy: same-numa-node-first

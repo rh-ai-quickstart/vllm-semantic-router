@@ -14,3 +14,12 @@
 {{- end }}
 {{- end }}
 {{- end }}
+
+{{/* Prefer a verified registry digest when provided. */}}
+{{- define "vllm-semantic-router.image" -}}
+{{- if .digest -}}
+{{- printf "%s@%s" .repository .digest -}}
+{{- else -}}
+{{- printf "%s:%s" .repository .tag -}}
+{{- end -}}
+{{- end -}}

@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-topology-agent
+  namespace: cpu-operator-system
+spec:
+  selector:
+    matchLabels:
+      app: node-topology-agent
+  template:
+    metadata:
+      labels:
+        app: node-topology-agent
+    spec:
+      serviceAccountName: node-topology-agent
+
+      # Run on all OpenShift worker nodes.
+      nodeSelector:
+        node-role.kubernetes.io/worker: ""
+
+      containers:
+        - name: agent
+          image: quay.io/louie_tsai/node-topology-agent:v1
+          imagePullPolicy: Always
+          env:
+            - name: NAMESPACE
+              value: cpu-operator-system
+            - name: INTERVAL_SECONDS
+              value: "60"
+            # Default to NVIDIA accelerator GPUs only. This avoids counting onboard
+            # BMC VGA devices such as ASPEED as AI GPUs. Add vendors if needed, for
+            # example: "0x10de,0x1002,0x8086" for NVIDIA, AMD, Intel.
+            - name: GPU_VENDOR_ALLOWLIST
+              value: "0x10de"
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            - name: host-sys
+              mountPath: /host-sys
+              readOnly: true
+            - name: host-proc
+              mountPath: /host-proc
+              readOnly: true
+      volumes:
+        - name: host-sys
+          hostPath:
+            path: /sys
+            type: Directory
+        - name: host-proc
+          hostPath:
+            path: /proc
+            type: Directory

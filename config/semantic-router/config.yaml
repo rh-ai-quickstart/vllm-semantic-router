@@ -8,42 +8,40 @@ listeners:
 
 providers:
   defaults:
-    default_model: general-agent
-    reasoning_families:
-      qwen3:
-        type: chat_template_kwargs
-        parameter: enable_thinking
+    model: general-agent
   models:
     - name: research-agent
-      reasoning_family: qwen3
-      provider_model_id: Qwen/Qwen3-8B
+      reasoning:
+        type: chat_template_kwargs
+        parameter: enable_thinking
+      provider_model_id: research-agent
       api_format: openai
       backend_refs:
         - name: research-vllm
           endpoint: llm-research:8000
           protocol: http
           weight: 100
-          type: chat
+          provider: vllm
 
     - name: rag-agent
-      provider_model_id: ibm-granite/granite-3.1-8b-instruct
+      provider_model_id: rag-agent
       api_format: openai
       backend_refs:
         - name: rag-vllm
           endpoint: llm-rag:8000
           protocol: http
           weight: 100
-          type: chat
+          provider: vllm
 
     - name: general-agent
-      provider_model_id: ibm-granite/granite-3.1-2b-instruct
+      provider_model_id: general-agent
       api_format: openai
       backend_refs:
         - name: general-vllm
           endpoint: llm-general:8000
           protocol: http
           weight: 100
-          type: chat
+          provider: vllm
 
 routing:
   decisions:
@@ -83,11 +81,6 @@ routing:
         conditions:
           - type: domain
             name: "computer science"
-      algorithm:
-        type: session_aware
-        session_aware:
-          base_method: hybrid
-          tool_loop_hard_lock: true
       modelRefs:
         - model: research-agent
           use_reasoning: true
@@ -119,6 +112,13 @@ routing:
           use_reasoning: false
 
   signals:
+    jailbreak:
+      - name: detected
+        threshold: 0.7
+    pii:
+      - name: detected
+        threshold: 0.9
+        pii_types_allowed: []
     domains:
       - name: "computer science"
         description: Computer science, engineering, and technical research queries.
@@ -165,7 +165,6 @@ global:
     modules:
       prompt_guard:
         enabled: true
-        use_mmbert_32k: false
         use_cpu: true
         threshold: 0.7
       classifier:
@@ -175,7 +174,18 @@ global:
           threshold: 0.9
   router:
     auto_model_name: auto
+    learning:
+      enabled: true
+      adaptation:
+        enabled: false
+      protection:
+        enabled: true
+        scope: conversation
   services:
+    management_api:
+      bind_address: 0.0.0.0
+      port: 8080
+      remote_exposure: false
     observability:
       tracing:
         enabled: true
@@ -183,9 +193,8 @@ global:
         otlp_endpoint: ""
       metrics:
         enabled: true
-        port: 9190
   stores:
-    semantic_cache:
+    response_cache:
       enabled: true
       backend_type: memory
       similarity_threshold: 0.8

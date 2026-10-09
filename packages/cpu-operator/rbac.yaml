@@ -1,0 +1,109 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cpu-operator-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: node-topology-agent
+  namespace: cpu-operator-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cpu-operator
+  namespace: cpu-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: node-topology-agent
+rules:
+  - apiGroups: ["cpu.example.com"]
+    resources:
+      - nodecputopologies
+    verbs: ["get", "list", "watch", "create", "patch"]
+  - apiGroups: ["cpu.example.com"]
+    resources:
+      - nodecputopologies/status
+    verbs: ["get", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cpu-operator
+rules:
+  - apiGroups: ["cpu.example.com"]
+    resources:
+      - nodecputopologies
+    verbs: ["get", "list", "watch", "patch"]
+  - apiGroups: ["cpu.example.com"]
+    resources:
+      - cpuplacementpolicies
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["cpu.example.com"]
+    resources:
+      - cpuplacementpolicies/status
+    verbs: ["get", "patch", "update"]
+
+  # Kopf namespace discovery/watch.
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+
+  # Kopf CRD discovery for custom resources.
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["get", "list", "watch", "patch"]
+
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch", "create", "patch", "update"]
+
+  # OpenShift provider: create/update MachineConfigPool and KubeletConfig.
+  - apiGroups: ["machineconfiguration.openshift.io"]
+    resources:
+      - machineconfigpools
+      - kubeletconfigs
+    verbs: ["get", "list", "watch", "create", "patch", "update"]
+
+  # OpenShift provider: optionally generate/apply Tuned CRs through Node Tuning Operator.
+  - apiGroups: ["tuned.openshift.io"]
+    resources:
+      - tuneds
+    verbs: ["get", "list", "watch", "create", "patch", "update"]
+
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-topology-agent
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: node-topology-agent
+subjects:
+  - kind: ServiceAccount
+    name: node-topology-agent
+    namespace: cpu-operator-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cpu-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cpu-operator
+subjects:
+  - kind: ServiceAccount
+    name: cpu-operator
+    namespace: cpu-operator-system

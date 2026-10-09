@@ -27,7 +27,7 @@ class RoutingMetadata(BaseModel):
     def from_eval_response(cls, data: dict) -> RoutingMetadata:
         decision_result = data.get("decision_result") or {}
         return cls(
-            selected_model=(data.get("recommended_models") or [None])[0],
+            selected_model=data.get("selected_model") or (data.get("recommended_models") or [None])[0],
             selected_decision=decision_result.get("decision_name"),
             selected_confidence=decision_result.get("confidence"),
             signal_confidences=data.get("signal_confidences"),

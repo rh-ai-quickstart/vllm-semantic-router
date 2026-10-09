@@ -1,0 +1,35 @@
+apiVersion: cpu.example.com/v1alpha1
+kind: CPUPlacementPolicy
+metadata:
+  name: generic-vllm-cpu-policy
+  namespace: cpu-operator-system
+spec:
+  provider:
+    type: GenericKubernetes
+    applyMode: RecommendationOnly
+
+  targetNodeSelector:
+    node-role.kubernetes.io/worker: ""
+
+  nodeLabels:
+    enabled: true
+    prefix: cpu.example.com
+
+  generic:
+    outputConfigMap: generic-vllm-cpu-policy-generated-kubelet-config
+
+  classification:
+    overrideLabel: cpu.example.com/node-class-override
+    cpuAmxMinLogicalCPUs: 64
+
+  profiles:
+    cpu-amx:
+      cpuManagerPolicy: static
+      cpuManagerPolicyOptions:
+        distribute-cpus-across-numa: "true"
+        full-pcpus-only: "true"
+      topologyManagerPolicy: restricted
+      placement:
+        strategy: balanced-reserved-other-pods
+        reservedOtherPodsPerNuma: 2
+        cpuPodPool: all-remaining-balanced-across-numa
